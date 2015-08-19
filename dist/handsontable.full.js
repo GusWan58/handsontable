@@ -5358,6 +5358,8 @@ DataMap.prototype.createRow = function(index, amount, createdAutomatically) {
       }
     } else if (this.instance.dataType === 'function') {
       row = this.instance.getSettings().dataSchema(index);
+    } else if (this.instance.getSettings().rowConstructor) { //DKU CUSTOM
+        row = new (this.instance.getSettings().rowConstructor)();
     } else {
       row = {};
       helper.deepExtend(row, this.getSchema());
