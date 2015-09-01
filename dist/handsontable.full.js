@@ -4559,7 +4559,9 @@ Handsontable.Core = function Core(rootElement, userSettings) {
         ilen,
         changes = [];
     for (i = 0, ilen = input.length; i < ilen; i++) {
-      changes.push([input[i][0], input[i][1], datamap.get(input[i][0], input[i][1]), input[i][2]]);
+      //DKU fix copy indices 4 and 5 to keep changes history
+      changes.push([input[i][0], input[i][1], datamap.get(input[i][0], input[i][1]), input[i][3], input[i][4], input[i][5]]);
+      //end DKU
     }
     if (!source && typeof row === "object") {
       source = prop;
@@ -5487,8 +5489,6 @@ DataMap.prototype.createRow = function(index, amount, createdAutomatically) {
       }
     } else if (this.instance.dataType === 'function') {
       row = this.instance.getSettings().dataSchema(index);
-    } else if (this.instance.getSettings().rowConstructor) { //DKU CUSTOM
-        row = new (this.instance.getSettings().rowConstructor)();
     } else {
       row = {};
       deepExtend(row, this.getSchema());
@@ -17146,14 +17146,20 @@ Handsontable.UndoRedo.ChangeAction.prototype.undo = function(instance, undoneCal
   var data = deepClone(this.changes),
       emptyRowsAtTheEnd = instance.countEmptyRows(true),
       emptyColsAtTheEnd = instance.countEmptyCols(true);
-  for (var i = 0,
-      len = data.length; i < len; i++) {
-    data[i].splice(3, 1);
+  for (var i = 0, len = data.length; i < len; i++) {
+    //DKU fix: we use indices > 3
+    //data[i].splice(3, 1);
+    var d = data[i]
+    data[i] = [d[0], d[1], d[3], d[2], d[5], d[4]];
+    //DKU fix 2: deepClone deletes functions, copy them if necessary
+    if (this.changes[i].length > 2 && typeof this.changes[i][1] == 'function') {
+      data[i][1] = this.changes[i][1];
+    }
+    //End DKU
   }
   instance.addHookOnce('afterChange', undoneCallback);
   instance.setDataAtRowProp(data, null, null, 'undo');
-  for (var i = 0,
-      len = data.length; i < len; i++) {
+  for (var i = 0, len = data.length; i < len; i++) {
     if (instance.getSettings().minSpareRows && data[i][0] + 1 + instance.getSettings().minSpareRows === instance.countRows() && emptyRowsAtTheEnd == instance.getSettings().minSpareRows) {
       instance.alter('remove_row', parseInt(data[i][0] + 1, 10), instance.getSettings().minSpareRows);
       instance.undoRedo.doneActions.pop();
@@ -17166,9 +17172,14 @@ Handsontable.UndoRedo.ChangeAction.prototype.undo = function(instance, undoneCal
 };
 Handsontable.UndoRedo.ChangeAction.prototype.redo = function(instance, onFinishCallback) {
   var data = deepClone(this.changes);
-  for (var i = 0,
-      len = data.length; i < len; i++) {
-    data[i].splice(2, 1);
+  for (var i = 0, len = data.length; i < len; i++) {
+    //DKU fix: we use indices > 3
+    //data[i].splice(2, 1);
+    //DKU fix: deepClone deletes functions, copy them if necessary
+    if (this.changes[i].length > 2 && typeof this.changes[i][1] == 'function') {
+      data[i][1] = this.changes[i][1];
+    }
+    //End DKU
   }
   instance.addHookOnce('afterChange', onFinishCallback);
   instance.setDataAtRowProp(data, null, null, 'redo');
