@@ -4473,6 +4473,9 @@ Handsontable.Core = function Core(rootElement, userSettings) {
       }
       if (priv.settings.allowInsertRow) {
         while (changes[i][0] > instance.countRows() - 1) {
+          //DKU
+          instance.undoRedo.linkWithNextActions = true;
+          //END DKU
           datamap.createRow();
         }
       }
@@ -17099,6 +17102,12 @@ Handsontable.UndoRedo = function(instance) {
 };
 Handsontable.UndoRedo.prototype.done = function(action) {
   if (!this.ignoreNewActions) {
+    //DKU fix: some high level actions are actually composed of several atomic steps (ex: paste data that creates rows). This enable to bulk undo/redo.
+    if (this.linkWithNextActions) {
+      action.linkedWithNextActions = true;
+      delete this.linkWithNextActions;
+    }
+      //END DKU
     this.doneActions.push(action);
     this.undoneActions.length = 0;
   }
@@ -17111,6 +17120,11 @@ Handsontable.UndoRedo.prototype.undo = function() {
     action.undo(this.instance, function() {
       that.ignoreNewActions = false;
       that.undoneActions.push(action);
+      // DKU fix
+      if (that.doneActions.length > 0 && that.doneActions[that.doneActions.length-1].linkedWithNextActions) {
+        that.undo();
+      }
+      // END DKU
     });
   }
 };
@@ -17122,6 +17136,9 @@ Handsontable.UndoRedo.prototype.redo = function() {
     action.redo(this.instance, function() {
       that.ignoreNewActions = false;
       that.doneActions.push(action);
+      if (that.undoneActions.length > 0 && action.linkedWithNextActions) {
+        that.redo();
+      }
     });
   }
 };
